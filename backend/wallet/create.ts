@@ -1,6 +1,8 @@
 import { api } from "encore.dev/api";
 import { secret } from "encore.dev/config";
 import { anchorDB } from "../database/db";
+import { validate } from "../common/validation";
+import { handleDatabaseError, ConflictError } from "../common/errors";
 
 // Stellar Network Configuration
 const stellarHorizonUrl = secret("StellarHorizonUrl");
@@ -24,6 +26,41 @@ export const create = api<CreateWalletRequest, CreateWalletResponse>(
   { expose: true, method: "POST", path: "/wallet/create" },
   async (req) => {
     try {
+      // Validate input - at least one contact method required
+      const validator = validate();
+      
+      if (req.email) {
+        validator.email("email", req.email);
+      }
+      if (req.phone) {
+        validator.phone("phone", req.phone);
+      }
+      
+      if (!req.email && !req.phone) {
+        validator.required("email or phone", null);
+      }
+      
+      validator.validate();
+
+      // Check if user already exists
+      if (req.email) {
+        const existingUser = await anchorDB.query`
+          SELECT stellar_account_id FROM users WHERE email = ${req.email}
+        `;
+        if (existingUser.length > 0) {
+          throw new ConflictError("An account with this email already exists");
+        }
+      }
+
+      if (req.phone) {
+        const existingUser = await anchorDB.query`
+          SELECT stellar_account_id FROM users WHERE phone = ${req.phone}
+        `;
+        if (existingUser.length > 0) {
+          throw new ConflictError("An account with this phone number already exists");
+        }
+      }
+      
       // Generate a new Stellar keypair
       // Note: In production, use stellar-sdk library
       // const keypair = Keypair.random();
@@ -58,8 +95,11 @@ export const create = api<CreateWalletRequest, CreateWalletResponse>(
         secret_key: secretKey,
         airdrop_transaction_hash: airdropTransactionHash
       };
-    } catch (error) {
-      throw new Error(`Failed to create wallet: ${error}`);
+    } catch (error: any) {
+      if (error.code) {
+        throw error; // Re-throw our custom errors
+      }
+      handleDatabaseError(error);
     }
   }
 );

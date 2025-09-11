@@ -6,39 +6,69 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Wallet, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { ErrorDisplay, FieldError } from '../components/ErrorDisplay';
+import { useErrorHandler } from '../hooks/useErrorHandler';
 import backend from '~backend/client';
 
 export function WalletPage() {
   const [walletData, setWalletData] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const { handleError, handleApiError } = useErrorHandler();
 
   const createWalletMutation = useMutation({
     mutationFn: async () => {
-      return backend.wallet.create({ email, phone });
+      setFieldErrors({});
+      try {
+        const response = await fetch('/api/wallet/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email || undefined, phone: phone || undefined })
+        });
+        
+        if (!response.ok) {
+          await handleApiError(response);
+        }
+        
+        return await response.json();
+      } catch (error: any) {
+        if (error.field_errors) {
+          setFieldErrors(error.field_errors);
+        }
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setWalletData(data);
+      setFieldErrors({});
       toast({
         title: "Wallet Created Successfully!",
         description: "Your new Stellar wallet has been created and funded with the initial airdrop.",
       });
     },
     onError: (error) => {
-      console.error('Failed to create wallet:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create wallet. Please try again.",
-        variant: "destructive",
-      });
+      handleError(error, { title: "Failed to create wallet" });
     },
   });
 
-  const { data: balanceData, refetch: refetchBalance } = useQuery({
+  const { data: balanceData, error: balanceError, refetch: refetchBalance } = useQuery({
     queryKey: ['balance', walletData?.account_id],
-    queryFn: () => backend.wallet.balance({ account_id: walletData.account_id }),
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/wallet/${walletData.account_id}/balance`);
+        if (!response.ok) {
+          await handleApiError(response);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Balance fetch error:', error);
+        throw error;
+      }
+    },
     enabled: !!walletData?.account_id,
+    retry: 3,
   });
 
   const copyToClipboard = async (text: string, label: string) => {
@@ -153,7 +183,13 @@ export function WalletPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {balanceData ? (
+              {balanceError ? (
+                <ErrorDisplay 
+                  error={balanceError}
+                  onRetry={() => refetchBalance()}
+                  className="mb-4"
+                />
+              ) : balanceData ? (
                 <div className="space-y-3">
                   {balanceData.balances.map((balance, index) => (
                     <div
@@ -223,8 +259,11 @@ export function WalletPage() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-green-50/50 dark:bg-green-950/30 border-green-200/50"
+                className={`bg-green-50/50 dark:bg-green-950/30 border-green-200/50 ${
+                  fieldErrors.email ? 'border-destructive' : ''
+                }`}
               />
+              <FieldError error={fieldErrors.email} />
             </div>
 
             <div className="space-y-2">
@@ -235,8 +274,11 @@ export function WalletPage() {
                 placeholder="+1 (555) 123-4567"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="bg-orange-50/50 dark:bg-orange-950/30 border-orange-200/50"
+                className={`bg-orange-50/50 dark:bg-orange-950/30 border-orange-200/50 ${
+                  fieldErrors.phone ? 'border-destructive' : ''
+                }`}
               />
+              <FieldError error={fieldErrors.phone} />
             </div>
 
             <div className="p-4 bg-gradient-to-r from-orange-100 to-red-50 dark:from-orange-950 dark:to-red-900 rounded-lg border border-orange-200/50">
@@ -250,6 +292,14 @@ export function WalletPage() {
                 </div>
               </div>
             </div>
+
+            {createWalletMutation.error && (
+              <ErrorDisplay 
+                error={createWalletMutation.error}
+                onRetry={() => createWalletMutation.mutate()}
+                className="mb-4"
+              />
+            )}
 
             <Button
               className="w-full bg-gradient-to-r from-green-600 to-orange-600 hover:from-green-700 hover:to-orange-700 text-white font-semibold py-3 text-lg"
