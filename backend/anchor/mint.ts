@@ -1,6 +1,6 @@
 import { api } from "encore.dev/api";
 import { validate } from "../common/validation";
-import { AuthorizationError, handleStellarError } from "../common/errors";
+import { UnauthorizedError, handleStellarError } from "../common/errors";
 import { secret } from "encore.dev/config";
 import { Asset, Keypair, Operation, Server, TransactionBuilder } from "stellar-sdk";
 
@@ -33,7 +33,7 @@ export const adminMint = api<MintRequest, MintResponse>(
       try {
         const expected = await adminTokenSecret();
         if (expected && req.admin_token !== expected) {
-          throw new AuthorizationError("Invalid admin token");
+          throw new UnauthorizedError("Invalid admin token");
         }
       } catch (e) {
         // If secret is not set, skip (treat as open in dev/test)
