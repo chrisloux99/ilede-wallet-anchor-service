@@ -1,6 +1,11 @@
 import { api } from "encore.dev/api";
 import { validate } from "../common/validation";
 import { handleStellarError } from "../common/errors";
+import { secret } from "encore.dev/config";
+import { Server } from "stellar-sdk";
+import { cacheBalanceData, cacheKeys } from "../common/cache";
+import { logger } from "../common/logging";
+import { rateLimits } from "../common/rateLimiting";
 
 interface BalanceRequest {
   account_id: string;
@@ -17,41 +22,46 @@ interface BalanceResponse {
   balances: AssetBalance[];
 }
 
+const stellarHorizonUrl = secret("StellarHorizonUrl");
+
 // Retrieves account balances from Stellar network
 export const balance = api<BalanceRequest, BalanceResponse>(
   { expose: true, method: "GET", path: "/wallet/:account_id/balance" },
-  async (req) => {
+  rateLimits.general(async (req) => {
     try {
-      // Validate input
-      validate()
-        .required("account_id", req.account_id)
-        .stellarAccount("account_id", req.account_id)
-        .validate();
+      validate().required("account_id", req.account_id).stellarAccount("account_id", req.account_id).validate();
 
-      // In a real implementation, you would:
-      // 1. Query Stellar Horizon for account balances
-      // 2. Format and return the balance information
-      
-      // Placeholder balances
-      const balances: AssetBalance[] = [
-        {
-          asset_type: "native",
-          balance: "1.0000000"
+      // Use caching for balance data (cache for 30 seconds)
+      const result = await cacheBalanceData(
+        req.account_id,
+        async () => {
+          logger.info("Fetching balance from Stellar network", { account_id: req.account_id });
+          
+          const server = new Server(await stellarHorizonUrl());
+          const account = await server.loadAccount(req.account_id);
+          const balances: AssetBalance[] = account.balances.map((b: any) => ({
+            asset_type: b.asset_type,
+            asset_code: b.asset_code,
+            asset_issuer: b.asset_issuer,
+            balance: b.balance,
+          }));
+          
+          return { balances };
         },
-        {
-          asset_type: "credit_alphanum12",
-          asset_code: "iLede",
-          asset_issuer: "PLACEHOLDER_ISSUER",
-          balance: "0.0100000"
-        }
-      ];
-      
-      return { balances };
+        30 * 1000 // 30 seconds cache
+      );
+
+      logger.info("Balance retrieved successfully", { 
+        account_id: req.account_id, 
+        balance_count: result.balances.length 
+      });
+
+      return result;
     } catch (error: any) {
-      if (error.code) {
-        throw error; // Re-throw our custom errors
-      }
+      logger.error("Balance retrieval failed", error, { account_id: req.account_id });
+      
+      if (error.code) throw error;
       handleStellarError(error);
     }
-  }
+  })
 );

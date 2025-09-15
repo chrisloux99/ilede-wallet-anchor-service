@@ -120,3 +120,85 @@ export class Validator {
 export function validate(): Validator {
   return new Validator();
 }
+
+/**
+ * Sanitize input to prevent XSS and injection attacks
+ */
+export function sanitizeInput(input: any): any {
+  if (typeof input === 'string') {
+    return input
+      .replace(/[<>\"'&]/g, '') // Remove HTML/XML characters
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/on\w+=/gi, '') // Remove event handlers
+      .trim();
+  }
+  
+  if (Array.isArray(input)) {
+    return input.map(sanitizeInput);
+  }
+  
+  if (typeof input === 'object' && input !== null) {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(input)) {
+      sanitized[key] = sanitizeInput(value);
+    }
+    return sanitized;
+  }
+  
+  return input;
+}
+
+/**
+ * Validate and sanitize request body
+ */
+export function validateAndSanitizeRequest<T>(req: any, schema: Record<string, any>): T {
+  const sanitized = sanitizeInput(req);
+  
+  const validator = validate();
+  for (const [field, rules] of Object.entries(schema)) {
+    const value = sanitized[field];
+    
+    if (rules.required) {
+      validator.required(field, value);
+    }
+    
+    if (rules.email && value) {
+      validator.email(field, value);
+    }
+    
+    if (rules.phone && value) {
+      validator.phone(field, value);
+    }
+    
+    if (rules.stellarAccount && value) {
+      validator.stellarAccount(field, value);
+    }
+    
+    if (rules.assetCode && value) {
+      validator.assetCode(field, value);
+    }
+    
+    if (rules.amount && value) {
+      validator.amount(field, value);
+    }
+    
+    if (rules.memo && value) {
+      validator.memo(field, value);
+    }
+    
+    if (rules.minLength && value) {
+      validator.minLength(field, value, rules.minLength);
+    }
+    
+    if (rules.maxLength && value) {
+      validator.maxLength(field, value, rules.maxLength);
+    }
+    
+    if (rules.custom && value) {
+      validator.custom(field, value, rules.custom);
+    }
+  }
+  
+  validator.validate();
+  return sanitized as T;
+}
