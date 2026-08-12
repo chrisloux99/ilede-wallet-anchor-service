@@ -42,6 +42,14 @@ function WithdrawInteractiveContent() {
     }
   }, [txId, account]);
 
+  // Auto-close window after completion
+  useEffect(() => {
+    if (status === 'completed') {
+      const timer = setTimeout(() => window.close(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
   const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text);
     toast({ title: 'Copied!', description: 'Copied to clipboard' });
@@ -239,7 +247,6 @@ function WithdrawInteractiveContent() {
                 <CheckCircle className="h-12 w-12 text-ngombe-forest mx-auto" />
                 <p className="text-lg font-bold text-ngombe-bone">Withdrawal Submitted</p>
                 <p className="text-sm text-ngombe-bone/50">Your withdrawal is being processed. You can close this window.</p>
-                {typeof window !== 'undefined' && setTimeout(() => window.close(), 3000)}
               </div>
             )}
 

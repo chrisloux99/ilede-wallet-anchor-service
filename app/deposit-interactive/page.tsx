@@ -39,6 +39,14 @@ function DepositInteractiveContent() {
     }
   }, [txId, account]);
 
+  // Auto-close window after completion
+  useEffect(() => {
+    if (status === 'completed') {
+      const timer = setTimeout(() => window.close(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
@@ -162,7 +170,6 @@ function DepositInteractiveContent() {
                   </p>
                 )}
                 <p className="text-sm text-ngombe-bone/50">This window will close shortly.</p>
-                {typeof window !== 'undefined' && setTimeout(() => window.close(), 3000)}
               </div>
             )}
 
