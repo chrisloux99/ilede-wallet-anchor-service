@@ -47,3 +47,9 @@ coverage/
 .mimocode/
 
 .vercel
+
+.next/
+
+vercel_deploy.txt
+vercel_ls.txt
+dev.log

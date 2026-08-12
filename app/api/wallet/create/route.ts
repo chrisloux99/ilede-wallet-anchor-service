@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { validate, sanitizeInput } from '@/lib/validation';
-import { errorToResponse, StellarNetworkError, ValidationError } from '@/lib/errors';
+import { errorToResponse, StellarNetworkError } from '@/lib/errors';
 import { Keypair, Asset, Operation, TransactionBuilder, Horizon } from 'stellar-sdk';
 
 // Simple per-IP rate limit for wallet creation (prevent distribution account drain)
@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
 
     const server = new Horizon.Server(horizonUrl);
     const distributionKeypair = Keypair.fromSecret(distributionSecret);
-    const issuerKeypair = Keypair.fromSecret(issuingAccountSecret);
     const asset = new Asset(assetCode, issuingAccountPublicKey);
 
     // Check if account exists, fund with Friendbot on testnet
@@ -78,20 +77,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Load user account and build trustline XDR (client must sign)
-    const userAccount = await server.loadAccount(public_key);
-    const fee = await server.fetchBaseFee();
-
-    const trustTx = new TransactionBuilder(userAccount, {
-      fee: fee.toString(),
-      networkPassphrase,
-    })
-      .addOperation(Operation.changeTrust({ asset }))
-      .setTimeout(180)
-      .build();
-
-    // Airdrop XLM from distribution account
+    // Airdrop XLM from distribution account (must happen before building trustline XDR)
     const distAccount = await server.loadAccount(distributionKeypair.publicKey());
+    const fee = await server.fetchBaseFee();
 
     const xlmTx = new TransactionBuilder(distAccount, {
       fee: fee.toString(),
@@ -110,26 +98,17 @@ export async function POST(request: NextRequest) {
     xlmTx.sign(distributionKeypair);
     const xlmResult = await server.submitTransaction(xlmTx);
 
-    // Authorize user account to hold iLede (required when AUTH_REQUIRED_FLAG is set)
-    const issuerAccount = await server.loadAccount(issuerKeypair.publicKey());
+    // Reload user account AFTER airdrop to get correct sequence number
+    const userAccount = await server.loadAccount(public_key);
     const fee2 = await server.fetchBaseFee();
 
-    const authTx = new TransactionBuilder(issuerAccount, {
+    const trustTx = new TransactionBuilder(userAccount, {
       fee: fee2.toString(),
       networkPassphrase,
     })
-      .addOperation(
-        Operation.allowTrust({
-          trustor: public_key,
-          assetCode: assetCode,
-          authorize: true,
-        })
-      )
-      .setTimeout(30)
+      .addOperation(Operation.changeTrust({ asset }))
+      .setTimeout(180)
       .build();
-
-    authTx.sign(issuerKeypair);
-    await server.submitTransaction(authTx);
 
     // Store user in database
     let userId: string | null = null;
@@ -152,7 +131,7 @@ export async function POST(request: NextRequest) {
       airdrop_transaction_hash: xlmResult.hash,
       trustline_xdr: trustTx.toXDR(),
       success: true,
-      message: 'Wallet created and funded with 1 XLM. Sign and submit the trustline_xdr to hold iLede tokens.',
+      message: 'Wallet created and funded with 1 XLM. Sign and submit the trustline_xdr, then call POST /api/wallet/authorize to complete setup.',
     });
   } catch (error) {
     return errorToResponse(error);
