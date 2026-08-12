@@ -61,8 +61,13 @@ export default function WalletPage() {
         throw new Error('Password is required');
       }
       const keys = await retrieveKeysSecurely(password);
-      const authResult = await authenticate(keys.secretKey);
-      setAuthToken(authResult.token);
+      // Try SEP-10 auth, but don't fail the login if it's unavailable
+      try {
+        const authResult = await authenticate(keys.secretKey);
+        setAuthToken(authResult.token);
+      } catch {
+        // Auth endpoint may not be configured — dashboard still works
+      }
       return { account_id: keys.publicKey, keys };
     },
     onSuccess: (data) => {
