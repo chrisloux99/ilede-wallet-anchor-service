@@ -36,12 +36,12 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!send_asset || !send_amount || !destination_asset || !destination_account) {
-      throw new ValidationError('Missing required fields', {
-        send_asset: send_asset ? undefined : 'Required',
-        send_amount: send_amount ? undefined : 'Required',
-        destination_asset: destination_asset ? undefined : 'Required',
-        destination_account: destination_account ? undefined : 'Required',
-      });
+      const fieldErrors: Record<string, string> = {};
+      if (!send_asset) fieldErrors.send_asset = 'Required';
+      if (!send_amount) fieldErrors.send_amount = 'Required';
+      if (!destination_asset) fieldErrors.destination_asset = 'Required';
+      if (!destination_account) fieldErrors.destination_account = 'Required';
+      throw new ValidationError('Missing required fields', fieldErrors);
     }
 
     // Check sender KYC
