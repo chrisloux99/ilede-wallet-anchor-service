@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, ArrowDownToLine, ArrowLeft, CheckCircle } from 'lucide-react';
 import { authenticate } from '@/lib/stellar-auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import Link from 'next/link';
 
 function DepositPageContent() {
+  const isAuthed = useRequireAuth();
   const searchParams = useSearchParams();
   const [assetCode, setAssetCode] = useState('iLede');
   const [account, setAccount] = useState('');
@@ -21,6 +23,8 @@ function DepositPageContent() {
   const [result, setResult] = useState<any>(null);
   const [isAuthing, setIsAuthing] = useState(false);
   const { toast } = useToast();
+
+  if (!isAuthed) return null;
 
   // Read account and token from URL params (passed from wallet page)
   useEffect(() => {

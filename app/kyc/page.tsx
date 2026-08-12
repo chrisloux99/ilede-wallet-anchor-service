@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, CheckCircle, Clock, XCircle, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { authenticate } from '@/lib/stellar-auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import Link from 'next/link';
 
 function KycPageContent() {
+  const isAuthed = useRequireAuth();
   const searchParams = useSearchParams();
   const [account, setAccount] = useState('');
   const [secretKey, setSecretKey] = useState('');
@@ -22,6 +24,8 @@ function KycPageContent() {
     id_type: 'passport', id_country_code: 'ZM', id_number: '',
   });
   const { toast } = useToast();
+
+  if (!isAuthed) return null;
 
   useEffect(() => {
     const urlAccount = searchParams.get('account');

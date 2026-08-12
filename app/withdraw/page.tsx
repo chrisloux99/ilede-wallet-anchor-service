@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, ArrowUpFromLine, ArrowLeft, CheckCircle } from 'lucide-react';
 import { authenticate } from '@/lib/stellar-auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import Link from 'next/link';
 
 function WithdrawPageContent() {
+  const isAuthed = useRequireAuth();
   const searchParams = useSearchParams();
   const [assetCode, setAssetCode] = useState('iLede');
   const [type, setType] = useState('bank_account');
@@ -22,6 +24,8 @@ function WithdrawPageContent() {
   const [result, setResult] = useState<any>(null);
   const [isAuthing, setIsAuthing] = useState(false);
   const { toast } = useToast();
+
+  if (!isAuthed) return null;
 
   useEffect(() => {
     const urlAccount = searchParams.get('account');

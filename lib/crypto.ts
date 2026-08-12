@@ -44,3 +44,34 @@ export async function storeKeysSecurely(keys: WalletKeys, password: string): Pro
   localStorage.setItem('wallet_keys', btoa(String.fromCharCode(...packed)));
   sessionStorage.setItem('wallet_authenticated', 'true');
 }
+
+export async function retrieveKeysSecurely(password: string): Promise<WalletKeys> {
+  const stored = localStorage.getItem('wallet_keys');
+  if (!stored) throw new Error('No wallet found on this device');
+
+  const packed = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+  const salt = packed.slice(0, 16);
+  const iv = packed.slice(16, 28);
+  const encrypted = packed.slice(28);
+
+  const key = await deriveKey(password, salt);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encrypted
+  );
+
+  const decoder = new TextDecoder();
+  const keys = JSON.parse(decoder.decode(decrypted)) as WalletKeys;
+  sessionStorage.setItem('wallet_authenticated', 'true');
+  return keys;
+}
+
+export function hasStoredWallet(): boolean {
+  return !!localStorage.getItem('wallet_keys');
+}
+
+export function clearWallet(): void {
+  localStorage.removeItem('wallet_keys');
+  sessionStorage.removeItem('wallet_authenticated');
+}

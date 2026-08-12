@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, ArrowRightLeft, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { authenticate } from '@/lib/stellar-auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import Link from 'next/link';
 
 function SendPageContent() {
+  const isAuthed = useRequireAuth();
   const searchParams = useSearchParams();
   const [account, setAccount] = useState('');
   const [secretKey, setSecretKey] = useState('');
@@ -25,6 +27,8 @@ function SendPageContent() {
   const [result, setResult] = useState<any>(null);
 
   const { toast } = useToast();
+
+  if (!isAuthed) return null;
 
   useEffect(() => {
     const urlAccount = searchParams.get('account');
