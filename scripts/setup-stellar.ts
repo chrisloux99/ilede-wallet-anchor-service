@@ -77,7 +77,7 @@ async function main() {
   })
     .addOperation(
       Operation.setOptions({
-        setFlags: 3, // AUTH_REQUIRED_FLAG (1) + AUTH_REVOCABLE_FLAG (2)
+        setFlags: 3 as any, // AUTH_REQUIRED_FLAG (1) + AUTH_REVOCABLE_FLAG (2)
       })
     )
     .setTimeout(30)
