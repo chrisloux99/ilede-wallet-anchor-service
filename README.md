@@ -48,14 +48,19 @@ A comprehensive Stellar anchor service built with Encore.ts, providing fiat on- 
 ### Required Secrets
 Configure these secrets in the Infrastructure tab:
 
-- `StellarHorizonUrl`: Stellar Horizon API URL
-- `StellarNetworkPassphrase`: Network passphrase
-- `IssuingAccountPublicKey`: Public key of issuing account
-- `IssuingAccountSecretKey`: Secret key of issuing account
-- `DistributionAccountPublicKey`: Public key of distribution account
-- `DistributionAccountSecretKey`: Secret key of distribution account
-- `KycProviderApiKey`: API key for KYC service
-- `BankingApiKey`: API key for banking integration
+| Secret | Purpose |
+|--------|---------|
+| `StellarHorizonUrl` | Stellar Horizon API URL (e.g. `https://horizon-testnet.stellar.org`) |
+| `StellarNetworkPassphrase` | Network passphrase (testnet or mainnet) |
+| `IssuingAccountPublicKey` | Public key of iLede Coin issuing account |
+| `IssuingAccountSecretKey` | Secret key of iLede Coin issuing account |
+| `DistributionAccountPublicKey` | Public key of distribution account |
+| `DistributionAccountSecretKey` | Secret key of distribution account |
+| `AssetCode` | Asset code (e.g. `iLede`) |
+| `SigningKeySecret` | Stellar secret key for signing SEP-10 challenges. Its public key must match `SIGNING_KEY` in `stellar.toml`. |
+| `AdminToken` | Required for the `/anchor/admin/mint` endpoint. If not set, minting is refused. |
+| `KycProviderApiKey` | API key for KYC service provider |
+| `BankingApiKey` | API key for banking integration |
 
 ### Initial Setup
 

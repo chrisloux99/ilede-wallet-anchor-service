@@ -1,0 +1,17 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Encore Cloud
+        run: echo "Deploy via encore deploy or your preferred method"
+        # Uncomment and configure for your deployment target:
+        # - uses: encoredev/setup-encore@v1
+        # - run: encore deploy --env=production

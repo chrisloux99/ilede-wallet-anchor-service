@@ -41,9 +41,13 @@
    DistributionAccountPublicKey=YOUR_DISTRIBUTION_ACCOUNT_PUBLIC_KEY
    DistributionAccountSecretKey=YOUR_DISTRIBUTION_ACCOUNT_SECRET_KEY
    AssetCode=iLede
+   SigningKeySecret=YOUR_SEP10_SIGNING_SECRET_KEY
+   AdminToken=YOUR_SECURE_ADMIN_TOKEN
    KycProviderApiKey=YOUR_KYC_API_KEY
    BankingApiKey=YOUR_BANKING_API_KEY
    ```
+
+   **Important:** `SigningKeySecret` is used to sign SEP-10 challenge transactions. Its public key must match the `SIGNING_KEY` in your `stellar.toml`. `AdminToken` is required for the `/anchor/admin/mint` endpoint — if not set, minting is refused.
 
 ### Step 2: Set Up Stellar Accounts
 
